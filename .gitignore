@@ -1,0 +1,16 @@
+dist
+cabal-dev
+*.o
+*.hi
+*.chi
+*.chs.h
+.virthualenv
+.hsenv
+.cabal-sandbox/
+cabal.sandbox.config
+cabal.config
+.hdevtools.sock
+/CONTRIBUTING.md
+/LICENSE
+/README.md
+/Setup.hs
