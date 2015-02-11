@@ -64,28 +64,18 @@ substC i r (Inf e) = Inf (substI i r e)
 substC i r (Lam e) = Lam (substC (i + 1) r e)
 
 -- test
--- id' = (Lam (Inf (Bound 0)))
--- const' = Lam (Lam (Inf (Bound 1)))
+id' :: TermI
+id' = Ann (Lam (Lam (Inf (Bound 0)))) (Inf (Pi (Inf Star) (Inf (Pi (Inf (Bound 0)) (Inf (Bound 1))))))
 
--- tfree = TFree . Global
--- free = Inf . Free . Global
+free :: String -> TermC
+free = Inf . Free . Global
 
--- term1 =
---   Ann id'
---       (Fun (tfree "a")
---            (tfree "a")) :@:
---   free "y"
--- term2 =
---   Ann const'
---       (Fun (Fun (tfree "b")
---                 (tfree "b"))
---            (Fun (tfree "a")
---                 (Fun (tfree "b")
---                      (tfree "b")))) :@:
---   id' :@:
---   free "y"
+term1 :: TermI
+term1 = id' :@: (free "Bool")
 
--- env1 =
---   [(Global "y",HasType (tfree "a")),(Global "a",HasKind Star)]
+term2 :: TermI
+term2 = term1 :@: (free "False")
 
--- env2 = [(Global "b", HasKind Star)] ++ env1
+env1 :: Context
+env1 =
+  [(Global "Bool",VStar),(Global "False",vfree (Global "Bool"))]
