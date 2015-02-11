@@ -39,6 +39,7 @@ typeI i cx (e :@: e') = do t <- typeI i cx e
                             VPi v f -> do typeC i cx e' v
                                           return (f (evalC e' []))
                             _ -> fail "illegal application"
+typeI _ _ _ = fail "Impossible"
 
 typeC :: Int -> Context -> TermC -> Type -> Result ()
 typeC i cx (Inf e) t = do t' <- typeI i cx e
