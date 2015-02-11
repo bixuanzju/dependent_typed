@@ -12,5 +12,4 @@ cabal.config
 .hdevtools.sock
 /CONTRIBUTING.md
 /LICENSE
-/README.md
 /Setup.hs
