@@ -1,6 +1,8 @@
 module Term where
 
-data TermI = Ann TermC Type
+data TermI = Ann TermC TermC
+           | Star
+           | Pi TermC TermC
            | Bound Int
            | Free Name
            | TermI :@: TermC
@@ -15,11 +17,18 @@ data Name = Global String
           | Quote Int
           deriving (Show, Eq)
 
-data Type = TFree Name
-          | Fun Type Type
-          deriving (Show, Eq)
+-- data Type = TFree Name
+--           | Fun Type Type
+--           deriving (Show, Eq)
+
+type Type = Value
 
 data Value = VLam (Value -> Value)
+           | VStar
+           | VPi Value (Value -> Value) -- domain and range
+                                        -- (represented as function to
+                                        -- hint that range is
+                                        -- dependent on variable)
            | VNeutral Neutral
 
 data Neutral = NFree Name
@@ -34,6 +43,8 @@ quote0 = quote 0
 quote :: Int -> Value -> TermC
 quote i (VLam f) = Lam (quote (i + 1) (f (vfree (Quote i))))
 quote i (VNeutral n) = Inf (neutralQuote i n)
+quote _ VStar = Inf Star
+quote i (VPi v f) = Inf (Pi (quote i v) (quote (i + 1) (f (vfree (Quote i)))))
 
 neutralQuote :: Int -> Neutral -> TermI
 neutralQuote i (NFree x) = boundFree i x
@@ -47,12 +58,12 @@ boundFree _ x = Free x
 vfree :: Name -> Value
 vfree  = VNeutral . NFree
 
-data Kind = Star deriving (Show)
+-- data Kind = Star deriving (Show)
 
-data Info = HasKind Kind
-          | HasType Type
-          deriving (Show)
+-- data Info = HasKind Kind
+--           | HasType Type
+--           deriving (Show)
 
-type Context = [(Name, Info)]
+type Context = [(Name, Type)]
 
 type Result a = Either String a
