@@ -29,6 +29,33 @@ evalI (NatElim m mz ms k) d = recur (evalC k d)
             _ -> error "internal: eval natElim"
         mzVal = evalC mz d
         msVal = evalC ms d
+evalI (Vec t1 t2) d = VVec (evalC t1 d) (evalC t2 d)
+evalI (Nil t) d = VNil (evalC t d)
+evalI (Cons a k x xs) d =
+  VCons (evalC a d)
+        (evalC k d)
+        (evalC x d)
+        (evalC xs d)
+evalI (VecElim a m mn mc k xs) d =
+  recur (evalC k d)
+        (evalC xs d)
+  where recur kVal xsVal =
+          case xsVal of
+            VNil _ -> mnVal
+            VCons _ l y ys ->
+              mcVal `vapp` l `vapp` y `vapp` ys `vapp`
+              recur l ys
+            VNeutral n ->
+              VNeutral (NVecElim (evalC a d)
+                                 (evalC m d)
+                                 mnVal
+                                 mcVal
+                                 kVal
+                                 n)
+            _ -> error "internal: eval vecElim"
+        mnVal = evalC mn d
+        mcVal = evalC mc d
+
 
 
 vapp :: Value -> Value -> Value

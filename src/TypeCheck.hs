@@ -51,6 +51,55 @@ typeI i cx (NatElim m mz ms k) =
      typeC i cx k VNat
      let kVal = evalC k []
      return (mVal `vapp` kVal)
+typeI i cx (Vec a k) =
+  do typeC i cx a VStar
+     typeC i cx k VNat
+     return VStar
+typeI _ _ (Nil a) =
+  do let aVal = evalC a []
+     return (VVec aVal VZero)
+typeI i cx (Cons a k x xs) =
+  do typeC i cx a VStar
+     let aVal = evalC a []
+     typeC i cx k VNat
+     let kVal = evalC k []
+     typeC i cx x aVal
+     typeC i cx xs (VVec aVal kVal)
+     return (VVec aVal (VSucc kVal))
+typeI i cx (VecElim a m mn mc k xs) =
+  do typeC i cx a VStar
+     let aVal = evalC a []
+     typeC i
+           cx
+           m
+           (VPi VNat
+                (\l ->
+                   VPi (VVec aVal l)
+                       (const VStar)))
+     let mVal = evalC m []
+     typeC i
+           cx
+           mn
+           (mVal `vapp` VZero `vapp`
+            (VNil aVal))
+     typeC i
+           cx
+           mc
+           (VPi VNat
+                (\l ->
+                   VPi aVal
+                       (\x ->
+                          VPi (VVec aVal l)
+                              (\ys ->
+                                 VPi (mVal `vapp` l `vapp` ys)
+                                     (const (mVal `vapp`
+                                             (VSucc l) `vapp`
+                                             (VCons aVal l x ys)))))))
+     typeC i cx k VNat
+     let kVal = evalC k []
+     let xsVal = evalC xs []
+     typeC i cx xs (VVec aVal kVal)
+     return (mVal `vapp` kVal `vapp` xsVal)
 typeI _ _ _ = fail "Impossible"
 
 typeC :: Int -> Context -> TermC -> Type -> Result ()
@@ -75,6 +124,10 @@ substI _ _ Nat = Nat
 substI _ _ Zero = Zero
 substI i r (Succ t) = Succ (substC i r t)
 substI i r (NatElim m mz ms k) = NatElim (substC i r m) (substC i r mz) (substC i r ms) (substC i r k)
+substI i r (Vec t1 t2) = Vec (substC i r t1) (substC i r t2)
+substI i r (Nil t) = Nil (substC i r t)
+substI i r (Cons t1 t2 t3 t4) = Cons (substC i r t1) (substC i r t2) (substC i r t3) (substC i r t4)
+substI i r (VecElim t1 t2 t3 t4 t5 t6) = VecElim (substC i r t1) (substC i r t2) (substC i r t3) (substC i r t4) (substC i r t5) (substC i r t6)
 
 substC :: Int -> TermI -> TermC -> TermC
 substC i r (Inf e) = Inf (substI i r e)
@@ -95,16 +148,40 @@ term2 = term1 :@: (free "False")
 
 env1 :: Context
 env1 =
-  [(Global "Bool",VStar),(Global "False",vfree (Global "Bool"))]
+  [(Global "Bool",VStar),(Global "True",vfree (Global "Bool")), (Global "False",vfree (Global "Bool"))]
 
-plus2 :: TermI
-plus2 =
-  NatElim (Lam (Inf (Pi (Inf Nat)
-                        (Inf Nat))))
-          (Lam (Inf (Bound 0)))
-          (Lam (Lam (Lam (Inf (Succ (Inf ((Bound 1) :@:
-                                          (Inf (Bound 0)))))))))
-          (Inf (Succ (Inf (Succ (Inf (Zero))))))
 
-term3 :: TermI
-term3 = plus2 :@: (Inf (Succ (Inf (Succ (Inf (Zero))))))
+n2nat :: Int -> TermC
+n2nat n = recur n
+  where recur num =
+          if num == 0
+             then (Inf Zero)
+             else Inf (Succ (recur (num - 1)))
+
+plus :: Int -> Int -> TermI
+plus n m =
+  (NatElim (Lam (Inf (Pi (Inf Nat)
+                         (Inf Nat))))
+           (Lam (Inf (Bound 0)))
+           (Lam (Lam (Lam (Inf (Succ (Inf ((Bound 1) :@:
+                                           (Inf (Bound 0)))))))))
+           (n2nat n)) :@:
+  (n2nat m)
+
+vec1 :: TermI
+vec1 =
+  Cons (free "Bool")
+       (n2nat 1)
+       (free "False")
+       (Inf (Cons (free "Bool")
+                  (n2nat 0)
+                  (free "True")
+                  (Inf (Nil (free "Bool")))))
+
+vec2 :: TermI
+vec2 =
+  (Cons (free "Bool")
+        (n2nat 0)
+        (free "False")
+        (Inf (Nil (free "Bool"))))
+
