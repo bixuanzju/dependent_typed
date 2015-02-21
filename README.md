@@ -1,4 +1,4 @@
-# From Simply Typed Lambda Calculus to Dependently Typed Lambda Calculus
+# Dependently Typed Lambda Calculus
 
 ## Summary
 
