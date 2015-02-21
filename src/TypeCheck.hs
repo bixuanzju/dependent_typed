@@ -39,6 +39,18 @@ typeI i cx (e :@: e') = do t <- typeI i cx e
                             VPi v f -> do typeC i cx e' v
                                           return (f (evalC e' []))
                             _ -> fail "illegal application"
+typeI _ _ Nat = return VStar
+typeI _ _ Zero = return VNat
+typeI i cx (Succ k) = do typeC i cx k VNat
+                         return VNat
+typeI i cx (NatElim m mz ms k) =
+  do typeC i cx m (VPi VNat (const VStar))
+     let mVal = evalC m []
+     typeC i cx mz (mVal `vapp` VZero)
+     typeC i cx ms (VPi VNat (\l -> VPi (mVal `vapp` l) (const (mVal `vapp` VSucc l))))
+     typeC i cx k VNat
+     let kVal = evalC k []
+     return (mVal `vapp` kVal)
 typeI _ _ _ = fail "Impossible"
 
 typeC :: Int -> Context -> TermC -> Type -> Result ()
@@ -59,6 +71,10 @@ substI i r (e1 :@: e2) =
   substC i r e2
 substI _ _ Star = Star
 substI i r (Pi t t') = Pi (substC i r t) (substC (i + 1) r t')
+substI _ _ Nat = Nat
+substI _ _ Zero = Zero
+substI i r (Succ t) = Succ (substC i r t)
+substI i r (NatElim m mz ms k) = NatElim (substC i r m) (substC i r mz) (substC i r ms) (substC i r k)
 
 substC :: Int -> TermI -> TermC -> TermC
 substC i r (Inf e) = Inf (substI i r e)
@@ -80,3 +96,15 @@ term2 = term1 :@: (free "False")
 env1 :: Context
 env1 =
   [(Global "Bool",VStar),(Global "False",vfree (Global "Bool"))]
+
+plus2 :: TermI
+plus2 =
+  NatElim (Lam (Inf (Pi (Inf Nat)
+                        (Inf Nat))))
+          (Lam (Inf (Bound 0)))
+          (Lam (Lam (Lam (Inf (Succ (Inf ((Bound 1) :@:
+                                          (Inf (Bound 0)))))))))
+          (Inf (Succ (Inf (Succ (Inf (Zero))))))
+
+term3 :: TermI
+term3 = plus2 :@: (Inf (Succ (Inf (Succ (Inf (Zero))))))

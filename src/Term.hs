@@ -6,6 +6,10 @@ data TermI = Ann TermC TermC
            | Bound Int
            | Free Name
            | TermI :@: TermC
+           | Nat
+           | NatElim TermC TermC TermC TermC
+           | Zero
+           | Succ TermC
            deriving (Show, Eq)
 
 data TermC = Inf TermI
@@ -30,9 +34,13 @@ data Value = VLam (Value -> Value)
                                         -- hint that range is
                                         -- dependent on variable)
            | VNeutral Neutral
+           | VNat
+           | VZero
+           | VSucc Value
 
 data Neutral = NFree Name
              | NApp Neutral Value
+             | NNatElim Value Value Value Neutral
 
 instance Show Value where
   show = show . quote0
@@ -45,10 +53,14 @@ quote i (VLam f) = Lam (quote (i + 1) (f (vfree (Quote i))))
 quote i (VNeutral n) = Inf (neutralQuote i n)
 quote _ VStar = Inf Star
 quote i (VPi v f) = Inf (Pi (quote i v) (quote (i + 1) (f (vfree (Quote i)))))
+quote _ VNat = Inf Nat
+quote _ VZero = Inf Zero
+quote i (VSucc v) = Inf (Succ (quote i v))
 
 neutralQuote :: Int -> Neutral -> TermI
 neutralQuote i (NFree x) = boundFree i x
 neutralQuote i (NApp n v) = neutralQuote i n :@: quote i v
+neutralQuote i (NNatElim m mz ms k) = NatElim (quote i m) (quote i mz) (quote i ms) (Inf $ neutralQuote i k)
 
 
 boundFree :: Int -> Name -> TermI
